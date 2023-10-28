@@ -28,8 +28,17 @@ func (bc *Blockchain) MineBlock(transactions []string, previousHash string) {
 	nonce := 0
 	var currentHash string
 
+	// Check if enough transactions are available to mine a block
+	if len(transactions) < maxTransactionsPerBlock {
+		fmt.Println("Not enough transactions to mine a new block.")
+		return
+	}
+
+	// Select the desired number of transactions to include in the block
+	transactions = transactions[:maxTransactionsPerBlock]
+
 	difficulty := defaultDifficulty
-	if len(bc.Blocks)%5 == 0 { // For every 5 blocks, increase difficulty by 1.
+	if len(bc.Blocks)%5 == 0 {
 		difficulty++
 	}
 
@@ -40,20 +49,12 @@ func (bc *Blockchain) MineBlock(transactions []string, previousHash string) {
 		CurrentHash:  "", // Temporarily set to empty; will be updated below
 	}
 
-	// Calculate Merkle Root for transactions
-	var txData [][]byte
-	for _, tx := range transactions {
-		txData = append(txData, []byte(tx))
-	}
-	tree := NewMerkleTree(txData)
-	block.MerkleRoot = hex.EncodeToString(tree.RootNode.Data)
-
-	// Mining process using PoW
+	// Adjusted Mining process using PoW
 	for {
 		block.Nonce = nonce
 		currentHash = block.CalculateHash()
 
-		if isValidHash(currentHash, difficulty) {
+		if strings.HasPrefix(currentHash, strings.Repeat("0", difficulty)) && isValidHash(currentHash) {
 			block.CurrentHash = currentHash
 			break
 		}
@@ -64,15 +65,9 @@ func (bc *Blockchain) MineBlock(transactions []string, previousHash string) {
 	bc.Blocks = append(bc.Blocks, block)
 }
 
-// isValidHash checks if the hash has a required number of leading zeros (as defined by difficulty)
-func isValidHash(hash string, difficulty int) bool {
-	prefix := ""
-
-	for i := 0; i < difficulty; i++ {
-		prefix += "0"
-	}
-
-	return hash[:difficulty] == prefix
+// Modify isValidHash to check hash against set range
+func isValidHash(hash string) bool {
+	return hash >= minAcceptableHashValue && hash <= maxAcceptableHashValue
 }
 
 // DisplayBlocks prints all blocks in the blockchain.
@@ -169,7 +164,7 @@ func (bc *Blockchain) TamperBlock(blockIndex int, newTransaction string) {
 // Assuming we add a variable to keep track of the number of transactions per block:
 var maxTransactionsPerBlock int = 5 // default
 
-func (bc *Blockchain) setNumberOfTransactionsPerBlock(num int) {
+func (bc *Blockchain) SetNumberOfTransactionsPerBlock(num int) {
 	maxTransactionsPerBlock = num
 }
 
@@ -177,7 +172,7 @@ func (bc *Blockchain) setNumberOfTransactionsPerBlock(num int) {
 var minAcceptableHashValue string = "0000000" // default low end
 var maxAcceptableHashValue string = "fffffff" // default high end
 
-func (bc *Blockchain) setBlockHashRangeForBlockCreation(min, max string) {
+func (bc *Blockchain) SetBlockHashRangeForBlockCreation(min, max string) {
 	minAcceptableHashValue = min
 	maxAcceptableHashValue = max
 }
