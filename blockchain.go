@@ -6,8 +6,10 @@
 package MidLevelBlockchain
 
 import (
+	"encoding/hex"
 	"fmt"
 	"os"
+	"strings"
 	"text/tabwriter"
 )
 
@@ -16,7 +18,63 @@ type Blockchain struct {
 	Blocks []*Block
 }
 
-// DisplayBlocks prints all blocks in the blockchain.
+//Mine Block
+
+const defaultDifficulty = 2
+
+// MineBlock mines a new block for the given transaction and previous hash.
+// The PoW mechanism will ensure that the hash of the block starts with a certain number of zeros.
+func (bc *Blockchain) MineBlock(transactions []string, previousHash string) {
+	nonce := 0
+	var currentHash string
+
+	difficulty := defaultDifficulty
+	if len(bc.Blocks)%5 == 0 { // For every 5 blocks, increase difficulty by 1.
+		difficulty++
+	}
+
+	block := &Block{
+		Transactions: transactions,
+		Nonce:        nonce,
+		PreviousHash: previousHash,
+		CurrentHash:  "", // Temporarily set to empty; will be updated below
+	}
+
+	// Calculate Merkle Root for transactions
+	var txData [][]byte
+	for _, tx := range transactions {
+		txData = append(txData, []byte(tx))
+	}
+	tree := NewMerkleTree(txData)
+	block.MerkleRoot = hex.EncodeToString(tree.RootNode.Data)
+
+	// Mining process using PoW
+	for {
+		block.Nonce = nonce
+		currentHash = block.CalculateHash()
+
+		if isValidHash(currentHash, difficulty) {
+			block.CurrentHash = currentHash
+			break
+		}
+
+		nonce++
+	}
+
+	bc.Blocks = append(bc.Blocks, block)
+}
+
+// isValidHash checks if the hash has a required number of leading zeros (as defined by difficulty)
+func isValidHash(hash string, difficulty int) bool {
+	prefix := ""
+
+	for i := 0; i < difficulty; i++ {
+		prefix += "0"
+	}
+
+	return hash[:difficulty] == prefix
+}
+
 // DisplayBlocks prints all blocks in the blockchain.
 func (bc *Blockchain) DisplayBlocks() {
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
@@ -27,7 +85,8 @@ func (bc *Blockchain) DisplayBlocks() {
 		prevHash := limitHashDisplay(block.PreviousHash, 16)
 		currHash := limitHashDisplay(block.CurrentHash, 16)
 
-		fmt.Fprintf(w, "%d\t%s\t%d\t%s\t%s\n", i, block.Transaction, block.Nonce, prevHash, currHash)
+		fmt.Fprintf(w, "%d\t%s\t%d\t%s\t%s\n", i, strings.Join(block.Transactions, ", "), block.Nonce, prevHash, currHash)
+
 	}
 
 	w.Flush()
@@ -55,7 +114,7 @@ func (bc *Blockchain) ChangeBlock(blockIndex int, newTransaction string) {
 		}
 
 		if i == blockIndex {
-			bc.Blocks[i].Transaction = newTransaction
+			bc.Blocks[i].Transactions = append(bc.Blocks[i].Transactions, newTransaction)
 		}
 
 		bc.Blocks[i].CurrentHash = bc.Blocks[i].CalculateHash()
@@ -67,17 +126,28 @@ func (bc *Blockchain) VerifyChain() bool {
 	for i := 0; i < len(bc.Blocks); i++ {
 		currentBlock := bc.Blocks[i]
 
-		// Check if the block's content hash matches its current hash
+		// Check block's content hash matches its current hash
 		if currentBlock.CurrentHash != currentBlock.CalculateHash() {
 			return false
 		}
 
-		// For all blocks except the first, check if the previous hash matches
+		// For all blocks except the first, check if previous hash matches
 		if i > 0 {
 			previousBlock := bc.Blocks[i-1]
 			if currentBlock.PreviousHash != previousBlock.CurrentHash {
 				return false
 			}
+		}
+
+		// Check Merkle root integrity
+		var txData [][]byte
+		for _, tx := range currentBlock.Transactions {
+			txData = append(txData, []byte(tx))
+		}
+
+		tree := NewMerkleTree(txData)
+		if currentBlock.MerkleRoot != hex.EncodeToString(tree.RootNode.Data) {
+			return false
 		}
 	}
 	return true
@@ -91,6 +161,23 @@ func (bc *Blockchain) TamperBlock(blockIndex int, newTransaction string) {
 	}
 
 	block := bc.Blocks[blockIndex]
-	block.Transaction = newTransaction
+	block.Transactions = append(block.Transactions, newTransaction)
+
 	// No hash recalculation here
+}
+
+// Assuming we add a variable to keep track of the number of transactions per block:
+var maxTransactionsPerBlock int = 5 // default
+
+func (bc *Blockchain) setNumberOfTransactionsPerBlock(num int) {
+	maxTransactionsPerBlock = num
+}
+
+// For the range of acceptable hash values (not implemented in mining, but here's a setter):
+var minAcceptableHashValue string = "0000000" // default low end
+var maxAcceptableHashValue string = "fffffff" // default high end
+
+func (bc *Blockchain) setBlockHashRangeForBlockCreation(min, max string) {
+	minAcceptableHashValue = min
+	maxAcceptableHashValue = max
 }

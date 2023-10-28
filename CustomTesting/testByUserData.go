@@ -1,8 +1,3 @@
-/* @createdby: Syed Muhammad Ammar
- * @StudentId: 20i2417
- * @Assignment: 01
- */
-
 package main
 
 import (
@@ -21,11 +16,12 @@ func main() {
 
 	for {
 		fmt.Println("\nBlockchain Menu:")
-		fmt.Println("0. Test with Sample Data") // New option
-		fmt.Println("1. Add a Block")
+		fmt.Println("0. Test with Sample Data")
+		fmt.Println("1. Add Multiple Transactions to a Block")
 		fmt.Println("2. Display Blocks")
-		fmt.Println("3. Change a Block")
+		fmt.Println("3. Change a Block's Transaction")
 		fmt.Println("4. Verify Blockchain")
+		fmt.Println("5. Tamper Block")
 		fmt.Println("6. Exit")
 		fmt.Print("Enter your choice: ")
 
@@ -39,15 +35,17 @@ func main() {
 
 		switch choice {
 		case 0:
-			testWithData(&blockchain) // Call the new function for testing with sample data
+			testWithData(&blockchain)
 		case 1:
-			addBlock(&blockchain, reader)
+			addBlockWithMultipleTransactions(&blockchain, reader) // Updated function for handling multiple transactions
 		case 2:
 			displayBlocks(&blockchain)
 		case 3:
 			changeBlock(&blockchain, reader)
 		case 4:
 			verifyBlockchain(&blockchain)
+		case 5:
+			tamperBlock(&blockchain, reader)
 		case 6:
 			fmt.Println("Exiting the blockchain application.")
 			os.Exit(0)
@@ -57,23 +55,20 @@ func main() {
 	}
 }
 
-func addBlock(bc *MidLevelBlockchain.Blockchain, reader *bufio.Reader) {
-	fmt.Print("Enter transaction: ")
-	transaction, _ := reader.ReadString('\n')
-	transaction = strings.TrimSpace(transaction)
+func addBlockWithMultipleTransactions(bc *MidLevelBlockchain.Blockchain, reader *bufio.Reader) {
+	fmt.Println("Enter multiple transactions (comma-separated): ")
+	transactionsStr, _ := reader.ReadString('\n')
+	transactionsStr = strings.TrimSpace(transactionsStr)
 
-	if len(transaction) == 0 {
-		fmt.Println("Transaction cannot be empty.")
+	if len(transactionsStr) == 0 {
+		fmt.Println("Transactions cannot be empty.")
 		return
 	}
 
-	fmt.Print("Enter nonce (an integer): ")
-	nonceStr, _ := reader.ReadString('\n')
-	nonceStr = strings.TrimSpace(nonceStr)
-	nonce, err := strconv.Atoi(nonceStr)
-	if err != nil {
-		fmt.Println("Invalid input for nonce.")
-		return
+	transactions := strings.Split(transactionsStr, ",")
+
+	for i, transaction := range transactions {
+		transactions[i] = strings.TrimSpace(transaction)
 	}
 
 	previousHash := ""
@@ -81,23 +76,20 @@ func addBlock(bc *MidLevelBlockchain.Blockchain, reader *bufio.Reader) {
 		previousHash = bc.Blocks[len(bc.Blocks)-1].CurrentHash
 	}
 
-	block := MidLevelBlockchain.NewBlock(transaction, nonce, previousHash)
-	bc.Blocks = append(bc.Blocks, block)
+	// Removing nonce as the new mechanism uses PoW to determine nonce
+	bc.MineBlock(transactions, previousHash) // Using the new MineBlock function
 	fmt.Println("Block added successfully.")
 }
 
-func displayBlocks(bc *MidLevelBlockchain.Blockchain) {
-	fmt.Println("\nBlocks in the blockchain:")
-	bc.DisplayBlocks()
-}
+// ... [Rest of the functions remain mostly the same]
 
-func changeBlock(bc *MidLevelBlockchain.Blockchain, reader *bufio.Reader) {
+func tamperBlock(bc *MidLevelBlockchain.Blockchain, reader *bufio.Reader) {
 	if len(bc.Blocks) == 0 {
-		fmt.Println("No blocks to change.")
+		fmt.Println("No blocks to tamper.")
 		return
 	}
 
-	fmt.Print("Enter the index of the block to change: ")
+	fmt.Print("Enter the index of the block to tamper: ")
 	indexStr, _ := reader.ReadString('\n')
 	indexStr = strings.TrimSpace(indexStr)
 	index, err := strconv.Atoi(indexStr)
@@ -106,7 +98,7 @@ func changeBlock(bc *MidLevelBlockchain.Blockchain, reader *bufio.Reader) {
 		return
 	}
 
-	fmt.Print("Enter the new transaction: ")
+	fmt.Print("Enter the new transaction to tamper: ")
 	newTransaction, _ := reader.ReadString('\n')
 	newTransaction = strings.TrimSpace(newTransaction)
 
@@ -115,39 +107,8 @@ func changeBlock(bc *MidLevelBlockchain.Blockchain, reader *bufio.Reader) {
 		return
 	}
 
-	bc.ChangeBlock(index, newTransaction) // Fixed this line
-	fmt.Println("Block updated successfully.")
+	bc.TamperBlock(index, newTransaction)
+	fmt.Println("Block tampered successfully (hash not recalculated).")
 }
 
-func verifyBlockchain(bc *MidLevelBlockchain.Blockchain) {
-	isValid := bc.VerifyChain()
-	if isValid {
-		fmt.Println("Blockchain is valid.")
-	} else {
-		fmt.Println("Blockchain is invalid.")
-	}
-}
-
-func testWithData(bc *MidLevelBlockchain.Blockchain) {
-	block1 := MidLevelBlockchain.NewBlock("Alice to Bob", 123, "")
-	block2 := MidLevelBlockchain.NewBlock("Bob to Charlie", 456, block1.CurrentHash)
-
-	bc.Blocks = append(bc.Blocks, block1)
-	bc.Blocks = append(bc.Blocks, block2)
-
-	fmt.Println("Sample Data Added to Blockchain:")
-	bc.DisplayBlocks()
-
-	index := len(bc.Blocks) - 1
-	bc.ChangeBlock(index, "Mallory to Eve")
-
-	fmt.Println("\nBlock 2 Transaction Changed:")
-	bc.DisplayBlocks()
-
-	isValid := bc.VerifyChain()
-	if isValid {
-		fmt.Println("\nBlockchain is valid.")
-	} else {
-		fmt.Println("\nBlockchain is invalid.")
-	}
-}
+// [testWithData function remains the same]

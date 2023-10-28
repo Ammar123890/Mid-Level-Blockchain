@@ -7,24 +7,36 @@ package MidLevelBlockchain
 
 import (
 	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
+	"strings"
 )
 
 // Block represents a single block in the blockchain.
 type Block struct {
-	Transaction  string
+	Transactions []string
 	Nonce        int
 	PreviousHash string
 	CurrentHash  string
+	MerkleRoot   string // New field for Merkle root
 }
 
 // NewBlock creates a new block.
-func NewBlock(transaction string, nonce int, previousHash string) *Block {
+func NewBlock(transactions []string, nonce int, previousHash string) *Block {
 	block := &Block{
-		Transaction:  transaction,
 		Nonce:        nonce,
 		PreviousHash: previousHash,
 	}
+
+	// Convert transactions to [][]byte
+	var txData [][]byte
+	for _, tx := range transactions {
+		txData = append(txData, []byte(tx))
+	}
+
+	// Create a new Merkle tree and set the Merkle root
+	tree := NewMerkleTree(txData)
+	block.MerkleRoot = hex.EncodeToString(tree.RootNode.Data)
 
 	// Calculate the hash for the new block
 	block.CurrentHash = block.CalculateHash()
@@ -34,7 +46,8 @@ func NewBlock(transaction string, nonce int, previousHash string) *Block {
 
 // CalculateHash calculates the hash of a block.
 func (b *Block) CalculateHash() string {
-	data := fmt.Sprintf("%s%d%s", b.Transaction, b.Nonce, b.PreviousHash)
+	transactionData := strings.Join(b.Transactions, "")
+	data := fmt.Sprintf("%s%d%s%s", transactionData, b.Nonce, b.PreviousHash, b.MerkleRoot)
 	hash := sha256.Sum256([]byte(data))
 	return fmt.Sprintf("%x", hash)
 }
