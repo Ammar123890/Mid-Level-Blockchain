@@ -28,13 +28,10 @@ func (bc *Blockchain) MineBlock(transactions []string, previousHash string) {
 	nonce := 0
 
 	// Check if enough transactions are available to mine a block
-	if len(transactions) < maxTransactionsPerBlock {
+	if len(transactions) < minTransactionsPerBlock {
 		fmt.Println("Not enough transactions to mine a new block.")
 		return
 	}
-
-	// Select the desired number of transactions to include in the block
-	transactions = transactions[:maxTransactionsPerBlock]
 
 	difficulty := defaultDifficulty
 	if len(bc.Blocks)%5 == 0 {
@@ -57,6 +54,7 @@ func (bc *Blockchain) MineBlock(transactions []string, previousHash string) {
 	}
 
 	bc.Blocks = append(bc.Blocks, block)
+	fmt.Println("Block added successfully.")
 }
 
 // Modify isValidHash to check hash against set range
@@ -142,24 +140,11 @@ func (bc *Blockchain) VerifyChain() bool {
 	return true
 }
 
-// TamperBlock tampers with the transaction of a given block but doesn't update its hash.
-func (bc *Blockchain) TamperBlock(blockIndex int, newTransaction string) {
-	if blockIndex < 0 || blockIndex >= len(bc.Blocks) {
-		fmt.Println("Invalid block index")
-		return
-	}
-
-	block := bc.Blocks[blockIndex]
-	block.Transactions = append(block.Transactions, newTransaction)
-
-	// No hash recalculation here
-}
-
 // Assuming we add a variable to keep track of the number of transactions per block:
-var maxTransactionsPerBlock int = 2 // default
+var minTransactionsPerBlock int = 2 // default
 
 func (bc *Blockchain) SetNumberOfTransactionsPerBlock(num int) {
-	maxTransactionsPerBlock = num
+	minTransactionsPerBlock = num
 }
 
 // For the range of acceptable hash values (not implemented in mining, but here's a setter):
