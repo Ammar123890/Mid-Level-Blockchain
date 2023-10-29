@@ -2,6 +2,7 @@ package MidLevelBlockchain
 
 import (
 	"crypto/sha256"
+	"fmt"
 )
 
 type MerkleTree struct {
@@ -20,10 +21,12 @@ func NewMerkleNode(left, right *MerkleNode, data []byte) *MerkleNode {
 	if left == nil && right == nil {
 		hash := sha256.Sum256(data)
 		node.Data = hash[:]
+		fmt.Printf("Leaf Node created with data: %x\n", node.Data) // Display leaf node creation
 	} else {
 		prevHashes := append(left.Data, right.Data...)
 		hash := sha256.Sum256(prevHashes)
 		node.Data = hash[:]
+		fmt.Printf("Parent Node created with left child: %x and right child: %x resulting in hash: %x\n", left.Data, right.Data, node.Data) // Display parent node creation
 	}
 
 	node.Left = left
@@ -41,6 +44,8 @@ func NewMerkleTree(data [][]byte) *MerkleTree {
 		nodes = append(nodes, *node)
 	}
 
+	fmt.Println("Leaf nodes created...") // Initial statement after all leaf nodes are created
+
 	// While there's more than 1 node, keep hashing till we reach root
 	for len(nodes) > 1 {
 		level := []MerkleNode{}
@@ -55,6 +60,8 @@ func NewMerkleTree(data [][]byte) *MerkleTree {
 				level = append(level, *node)
 			}
 		}
+
+		fmt.Println("Next level of parent nodes created...") // Statement after a new level of parent nodes is created
 
 		nodes = level
 	}

@@ -26,6 +26,7 @@ func NewBlock(transactions []string, nonce int, previousHash string) *Block {
 	block := &Block{
 		Nonce:        nonce,
 		PreviousHash: previousHash,
+		Transactions: transactions, // This line was missing
 	}
 
 	// Convert transactions to [][]byte

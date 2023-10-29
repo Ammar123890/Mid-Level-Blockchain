@@ -26,7 +26,6 @@ const defaultDifficulty = 2
 // The PoW mechanism will ensure that the hash of the block starts with a certain number of zeros.
 func (bc *Blockchain) MineBlock(transactions []string, previousHash string) {
 	nonce := 0
-	var currentHash string
 
 	// Check if enough transactions are available to mine a block
 	if len(transactions) < maxTransactionsPerBlock {
@@ -42,17 +41,11 @@ func (bc *Blockchain) MineBlock(transactions []string, previousHash string) {
 		difficulty++
 	}
 
-	block := &Block{
-		Transactions: transactions,
-		Nonce:        nonce,
-		PreviousHash: previousHash,
-		CurrentHash:  "", // Temporarily set to empty; will be updated below
-	}
+	block := NewBlock(transactions, nonce, previousHash)
 
 	// Adjusted Mining process using PoW
 	for {
-		block.Nonce = nonce
-		currentHash = block.CalculateHash()
+		currentHash := block.CalculateHash()
 
 		if strings.HasPrefix(currentHash, strings.Repeat("0", difficulty)) && isValidHash(currentHash) {
 			block.CurrentHash = currentHash
@@ -60,6 +53,7 @@ func (bc *Blockchain) MineBlock(transactions []string, previousHash string) {
 		}
 
 		nonce++
+		block.Nonce = nonce
 	}
 
 	bc.Blocks = append(bc.Blocks, block)
@@ -162,7 +156,7 @@ func (bc *Blockchain) TamperBlock(blockIndex int, newTransaction string) {
 }
 
 // Assuming we add a variable to keep track of the number of transactions per block:
-var maxTransactionsPerBlock int = 5 // default
+var maxTransactionsPerBlock int = 2 // default
 
 func (bc *Blockchain) SetNumberOfTransactionsPerBlock(num int) {
 	maxTransactionsPerBlock = num
