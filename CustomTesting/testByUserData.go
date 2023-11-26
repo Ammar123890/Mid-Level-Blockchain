@@ -7,6 +7,7 @@ package main
 
 import (
 	"bufio"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"strconv"
@@ -75,6 +76,16 @@ func addBlockWithMultipleTransactions(bc *MidLevelBlockchain.Blockchain, reader 
 	for i, transaction := range transactions {
 		transactions[i] = strings.TrimSpace(transaction)
 	}
+	encryptionKey := []byte("12345678901234567890123456789012") // AES-256
+
+	for i, transaction := range transactions {
+		encryptedTx, err := MidLevelBlockchain.Encrypt([]byte(transaction), encryptionKey)
+		if err != nil {
+			fmt.Println("Error encrypting transaction:", err)
+			return
+		}
+		transactions[i] = hex.EncodeToString(encryptedTx)
+	}
 
 	previousHash := ""
 	if len(bc.Blocks) > 0 {
@@ -114,7 +125,9 @@ func changeBlock(bc *MidLevelBlockchain.Blockchain, reader *bufio.Reader) {
 		return
 	}
 
-	bc.ChangeBlock(index, newTransaction)
+	encryptionKey := []byte("12345678901234567890123456789012")
+
+	bc.ChangeBlock(index, newTransaction, encryptionKey)
 	fmt.Println("Block updated successfully.")
 }
 
