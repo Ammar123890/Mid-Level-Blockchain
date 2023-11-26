@@ -63,17 +63,36 @@ func isValidHash(hash string) bool {
 }
 
 // DisplayBlocks prints all blocks in the blockchain.
+// blockchain.go
+
 func (bc *Blockchain) DisplayBlocks() {
+	encryptionKey := []byte("12345678901234567890123456789012") // Same key as used for encryption
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 
 	fmt.Fprintln(w, "Block\tTransaction\tNonce\tPrevious Hash\tCurrent Hash")
 	for i, block := range bc.Blocks {
-		// Limit hash display to 16 characters and append "..." if it exceeds that length
+		decryptedTransactions := []string{}
+
+		for _, encryptedTx := range block.Transactions {
+			txBytes, err := hex.DecodeString(encryptedTx)
+			if err != nil {
+				fmt.Println("Error decoding transaction hex:", err)
+				return
+			}
+
+			decryptedTx, err := Decrypt(txBytes, encryptionKey)
+			if err != nil {
+				fmt.Println("Error decrypting transaction:", err)
+				return
+			}
+
+			decryptedTransactions = append(decryptedTransactions, string(decryptedTx))
+		}
+
+		// Use decryptedTransactions instead of block.Transactions for display
 		prevHash := limitHashDisplay(block.PreviousHash, 16)
 		currHash := limitHashDisplay(block.CurrentHash, 16)
-
-		fmt.Fprintf(w, "%d\t%s\t%d\t%s\t%s\n", i, strings.Join(block.Transactions, ", "), block.Nonce, prevHash, currHash)
-
+		fmt.Fprintf(w, "%d\t%s\t%d\t%s\t%s\n", i, strings.Join(decryptedTransactions, ", "), block.Nonce, prevHash, currHash)
 	}
 
 	w.Flush()
@@ -89,11 +108,18 @@ func limitHashDisplay(hash string, maxLength int) string {
 
 // ChangeBlock changes the transaction of a given block.
 
-func (bc *Blockchain) ChangeBlock(blockIndex int, newTransaction string) {
+func (bc *Blockchain) ChangeBlock(blockIndex int, newTransaction string, encryptionKey []byte) {
 	if blockIndex < 0 || blockIndex >= len(bc.Blocks) {
 		fmt.Println("Invalid block index")
 		return
 	}
+
+	encryptedTx, err := Encrypt([]byte(newTransaction), encryptionKey)
+	if err != nil {
+		fmt.Println("Error encrypting transaction:", err)
+		return
+	}
+	hexEncodedTx := hex.EncodeToString(encryptedTx)
 
 	for i := blockIndex; i < len(bc.Blocks); i++ {
 		if i > 0 {
@@ -101,7 +127,7 @@ func (bc *Blockchain) ChangeBlock(blockIndex int, newTransaction string) {
 		}
 
 		if i == blockIndex {
-			bc.Blocks[i].Transactions = append(bc.Blocks[i].Transactions, newTransaction)
+			bc.Blocks[i].Transactions = []string{hexEncodedTx} // Replace the transactions, not append
 		}
 
 		bc.Blocks[i].CurrentHash = bc.Blocks[i].CalculateHash()
